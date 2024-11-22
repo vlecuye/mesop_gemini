@@ -1,3 +1,4 @@
+
 import time
 import base64
 import mesop as me
@@ -25,9 +26,11 @@ class State:
   in_progress: bool
   file: me.UploadedFile
   files: list[object]
+  selected: list[int]
 
-@me.page(path="/")
+@me.page(path="/",security_policy=me.SecurityPolicy(dangerously_disable_trusted_types=True))
 def page():
+  
   with me.box(
     style=me.Style(
       background="#fff",
@@ -46,15 +49,23 @@ def page():
     ):
       header_text()
       example_row()
-      chat()
+      chat_box()
       upload()
   footer()
 
-def chat():
+def chat_box():
    mel.chat(transform, title="Discuss!", bot_user="Name")
 
-def transform():
-  return None
+def transform(prompt:str, history:list):
+  responses = chat.send_message(
+        prompt,
+        stream = True
+    )
+  for r in responses:
+    if r.text :
+      for word in r.text.split():
+        yield word + " "
+        time.sleep(0.05)
 
 def header_text():
   with me.box(
@@ -66,7 +77,7 @@ def header_text():
     )
   ):
     me.text(
-      "Synthetic Personas Demo",
+      "Underwriting Proof Of Concept",
       style=me.Style(
         font_size=36,
         font_weight=700,
@@ -75,16 +86,10 @@ def header_text():
       ),
     )
 
-
-EXAMPLES = [
-  "How to tie a shoe",
-  "Make a brownie recipe",
-  "Write an email asking for a sick day off",
-]
-
-
 def example_row():
   state = me.state(State)
+  if len(state.files) > 0 :
+    me.text("Files used:",style=me.Style(font_size=24,font_weight=600))
   is_mobile = me.viewport_size().width < 640
   with me.box(
     style=me.Style(
@@ -94,125 +99,25 @@ def example_row():
       margin=me.Margin(bottom=36),
     )
   ):
-    for example in state.files:
-      example_box(example, is_mobile)
+    for i,example in enumerate(state.files):
+      example_box(example, i)
 
 
-def example_box(example: object, is_mobile: bool):
+def example_box(example: object, index: int):
   with me.box(
     style=me.Style(
-      width="100%" if is_mobile else 200,
-      height=140,
+      width="33%",
+      height=200,
       background="#F0F4F9",
       padding=me.Padding.all(16),
       font_weight=500,
       line_height="1.5",
       border_radius=16,
       cursor="pointer",
-      margin=me.Margin.all(16)
     ),
-    on_click=click_example_box,
   ):
-    me.image(src=_convert_contents_data_url(example),style=me.Style(height="100px"))
+    me.image(src=_convert_contents_data_url(example),style=me.Style(height="auto",width="100%"))
     me.text(example.name)
-
-
-def click_example_box(e: me.ClickEvent):
-  state = me.state(State)
-  state.input = e.key
-
-
-def chat_input():
-  state = me.state(State)
-  with me.box(
-    style=me.Style(
-      padding=me.Padding.all(8),
-      background="white",
-      display="flex",
-      width="100%",
-      border=me.Border.all(
-        me.BorderSide(width=0, style="solid", color="black")
-      ),
-      border_radius=12,
-      box_shadow="0 10px 20px #0000000a, 0 2px 6px #0000000a, 0 0 1px #0000000a",
-    )
-  ):
-    with me.box(
-      style=me.Style(
-        flex_grow=1,
-      )
-    ):
-      me.native_textarea(
-        value=state.input,
-        autosize=True,
-        min_rows=4,
-        placeholder="Enter your prompt",
-        style=me.Style(
-          padding=me.Padding(top=16, left=16),
-          background="white",
-          outline="none",
-          width="100%",
-          overflow_y="auto",
-          border=me.Border.all(
-            me.BorderSide(style="none"),
-          ),
-        ),
-        on_blur=textarea_on_blur,
-      )
-    with me.content_button(type="icon", on_click=click_send):
-      me.icon("send")
-
-
-def textarea_on_blur(e: me.InputBlurEvent):
-  state = me.state(State)
-  state.input = e.value
-
-
-def click_send(e: me.ClickEvent):
-  state = me.state(State)
-  if not state.input:
-    return
-  state.in_progress = True
-  input = state.input
-  state.input = ""
-  yield
-
-  for chunk in call_api(input):
-    state.output += chunk
-    yield
-  state.in_progress = False
-  yield
-
-
-def call_api(input):
-  responses = chat.send_message(
-        input,
-        stream=True
-    )
-  for r in responses:
-    if r.text :
-      for word in r.text.split():
-        yield word + " "
-        time.sleep(0.05)
-
-
-def output():
-  state = me.state(State)
-  if state.output or state.in_progress:
-    with me.box(
-      style=me.Style(
-        background="#F0F4F9",
-        padding=me.Padding.all(16),
-        border_radius=16,
-        margin=me.Margin(top=36),
-      )
-    ):
-      if state.output:
-        me.markdown(state.output)
-      if state.in_progress:
-        with me.box(style=me.Style(margin=me.Margin(top=16))):
-          me.progress_spinner()
-
 
 def footer():
   with me.box(
@@ -256,6 +161,7 @@ def handle_upload(event: me.UploadEvent):
   state.files = currentFiles
   print(state.file)
   print(state.files)
+  return None
 
 
 def _convert_contents_data_url(file: me.UploadedFile) -> str:

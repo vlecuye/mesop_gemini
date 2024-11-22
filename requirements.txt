@@ -1,0 +1,4 @@
+mesop
+requests
+vertexai
+gunicorn
