@@ -58,14 +58,17 @@ def chat_box():
    mel.chat(transform, title="Discuss!", bot_user="Name")
 
 def transform(prompt:str, history:list):
+  length = 0
   responses = bot.call_graph()
   for r in responses:
-    print(r)
-    if r[1] :
+    print("New MESSAGE!")
+    
+    if len(r[1][0].content) != length:
       print(r[1][0])
       for word in r[1][0].content.split():
         yield word + " "
         time.sleep(0.05)
+    length = len(r[1][0].content)
 
 def header_text():
   with me.box(

@@ -5,6 +5,7 @@ from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
 
 llm = ChatVertexAI(model="gemini-1.5-flash",temperature="0")
+llm2 = ChatVertexAI(model="gemini-1.5-flash",temperature="0")
 members = ["researcher"]
 options = members + ["FINISH"]
 
@@ -40,12 +41,12 @@ def get_next_node(last_message: BaseMessage, goto: str):
 research_agent = create_react_agent(
     llm,tools=[],
     state_modifier=make_system_prompt(
-        "You can only do research and cannot do any other actions. Your goal is to find the right document snippets based on the user's query. You are working with a calculation colleague. The risk factor for someone with type 1 diabetes is 3 and the risk factor for tachicardia is 1. You also know the base premium is 100$"
+        "You can only do research and cannot do any other actions. Your goal is to find the right document snippets based on the user's query. You are working with a calculation colleague. The risk factor for someone with type 1 diabetes is 3 and the risk factor for tachicardia is 1. You also know the base premium is 300$"
     ),
 )
 
 calculation_agent = create_react_agent(
-    llm,tools=[],
+    llm2,tools=[],
     state_modifier=make_system_prompt(
         "You can only calculate the insurance premium based on the information you are provided. The premiumn is calculated by multiplying the base premium by the risk factor"
     ),
@@ -99,7 +100,7 @@ def call_graph():
         "messages": [
             (
                 "user",
-                "First, find out the risk factor for someone with type 1 diabetes and a tachycardia. the base premium is 100$"
+                "First, find out the risk factor for someone with type 1 diabetes and a tachycardia."
                 "Then calculate the insurance premium by adding up all risk factors and multiplying it by the premium. Once you have it, you're done!",
             )
         ],
