@@ -1,5 +1,6 @@
 
 import time
+import bot
 import base64
 import mesop as me
 import mesop.labs as mel
@@ -17,7 +18,7 @@ from vertexai.generative_models import (
 )
 
 
-model = GenerativeModel("gemini-1.5-flash",system_instruction=["You are a farmer"])
+model = GenerativeModel("gemini-1.5-flash",system_instruction=[""])
 chat = model.start_chat()
 @me.stateclass
 class State:
@@ -57,13 +58,12 @@ def chat_box():
    mel.chat(transform, title="Discuss!", bot_user="Name")
 
 def transform(prompt:str, history:list):
-  responses = chat.send_message(
-        prompt,
-        stream = True
-    )
+  responses = bot.call_graph()
   for r in responses:
-    if r.text :
-      for word in r.text.split():
+    print(r)
+    if r[1] :
+      print(r[1][0])
+      for word in r[1][0].content.split():
         yield word + " "
         time.sleep(0.05)
 
@@ -154,13 +154,12 @@ def upload():
 
 
 def handle_upload(event: me.UploadEvent):
+  bot.call_graph()
   state = me.state(State)
   state.file = event.file
   currentFiles = state.files.copy()
   currentFiles.append(event.file)
   state.files = currentFiles
-  print(state.file)
-  print(state.files)
   return None
 
 

@@ -2,3 +2,7 @@ mesop
 requests
 vertexai
 gunicorn
+langgraph
+vertexai
+langchain
+langchain_google_vertexai
