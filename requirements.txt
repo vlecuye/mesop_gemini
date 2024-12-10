@@ -6,3 +6,4 @@ langgraph
 vertexai
 langchain
 langchain_google_vertexai
+langchain_google_community[vertexaisearch]

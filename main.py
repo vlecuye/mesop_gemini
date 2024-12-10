@@ -16,9 +16,16 @@ from vertexai.generative_models import (
     grounding,
     ChatSession
 )
+from vertexai.preview.generative_models import grounding
 
-
-model = GenerativeModel("gemini-1.5-flash",system_instruction=[""])
+tools = [
+    Tool.from_retrieval(
+        retrieval=grounding.Retrieval(
+            source=grounding.VertexAISearch(datastore="projects/prj-iaii-l-underwriting/locations/global/collections/default_collection/dataStores/encyclopedia-datastore_1733772535160"),
+        )
+    ),
+]
+model = GenerativeModel("gemini-1.5-pro",system_instruction=["You are an underwriting specialist. your job is to figure out the underwriting cnsiderations for the profile that is provided to. you. Make sure you. list each consideration for each risk factor. You MUST also provide the rating of each risk factor based ONLY on the documentation you have. The rating is calculated by adding up all ratings for all risk factors"],tools=tools)
 chat = model.start_chat()
 @me.stateclass
 class State:
@@ -59,12 +66,13 @@ def chat_box():
 
 def transform(prompt:str, history:list):
   length = 0
-  responses = bot.call_graph()
+  responses = bot.call_graph(prompt)
+  #responses = chat.send_message(prompt)
   for r in responses:
     print("New MESSAGE!")
     
     if len(r[1][0].content) != length:
-      print(r[1][0])
+      print(r)
       for word in r[1][0].content.split():
         yield word + " "
         time.sleep(0.05)
