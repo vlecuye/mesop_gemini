@@ -66,17 +66,19 @@ def chat_box():
 
 def transform(prompt:str, history:list):
   length = 0
-  responses = bot.call_graph(prompt)
-  #responses = chat.send_message(prompt)
+  #responses = bot.call_graph(prompt)
+  responses = chat.send_message(prompt)
   for r in responses:
     print("New MESSAGE!")
-    
-    if len(r[1][0].content) != length:
-      print(r)
-      for word in r[1][0].content.split():
-        yield word + " "
-        time.sleep(0.05)
-    length = len(r[1][0].content)
+    for word in r.text:
+      yield word + " "
+      time.sleep(0.05)
+    #if len(r[1][0].content) != length:
+    #  print(r)
+    #  for word in r[1][0].content.split():
+    #    yield word + " "
+    #    time.sleep(0.05)
+    #length = len(r[1][0].content)
 
 def header_text():
   with me.box(

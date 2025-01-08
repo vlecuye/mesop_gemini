@@ -58,7 +58,7 @@ def get_next_node(last_message: BaseMessage, goto: str):
 research_agent = create_react_agent(
     llm_research,tools=[search_documents],
     state_modifier=make_system_prompt(
-        "You can only do research and cannot do any other actions. Your goal is to find the right document snippets based on the user's query. You are working with a rating calculation colleague."
+        "You are a "
     ),
 )
 
