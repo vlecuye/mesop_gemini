@@ -58,7 +58,7 @@ def get_next_node(last_message: BaseMessage, goto: str):
 research_agent = create_react_agent(
     llm_research,tools=[search_documents],
     state_modifier=make_system_prompt(
-        "You can only do research and cannot do any other actions. Your goal is to find the right document snippets based on the user's query. You are working with a rating calculation colleague."
+        "You are an underwriting specialist with intricate knowledge of ho to calculate insurance premiums. Your goal is to understand the rating of hte premium based on the user's query. This rating is calculated by identifying each risk factor, and finding the rating for each of these factors. you can then sum them up to obtain the full rating"
     ),
 )
 

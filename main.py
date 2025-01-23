@@ -1,4 +1,5 @@
-
+from google.api_core.client_options import ClientOptions
+from google.cloud import discoveryengine_v1 as discoveryengine
 import time
 import bot
 import base64
@@ -25,7 +26,98 @@ tools = [
         )
     ),
 ]
-model = GenerativeModel("gemini-1.5-pro",system_instruction=["You are an underwriting specialist. your job is to figure out the underwriting cnsiderations for the profile that is provided to. you. Make sure you. list each consideration for each risk factor. You MUST also provide the rating of each risk factor based ONLY on the documentation you have. The rating is calculated by adding up all ratings for all risk factors"],tools=tools)
+generation_config = {
+    "temperature": 0,
+    "top_p": 0.95,
+}
+project_id = "prj-iaii-l-underwriting"
+location = "global"          # Values: "global", "us", "eu"
+engine_id = "underwriting-encyclopedia3_1734624200615"
+
+def search_sample(
+    project_id: str,
+    location: str,
+    engine_id: str,
+    search_query: str,
+) -> discoveryengine.services.search_service.pagers.SearchPager:
+    #  For more information, refer to:
+    # https://cloud.google.com/generative-ai-app-builder/docs/locations#specify_a_multi-region_for_your_data_store
+    client_options = (
+        ClientOptions(api_endpoint=f"{location}-discoveryengine.googleapis.com")
+        if location != "global"
+        else None
+    )
+
+    # Create a client
+    client = discoveryengine.SearchServiceClient(client_options=client_options)
+
+    # The full resource name of the search app serving config
+    serving_config = f"projects/{project_id}/locations/{location}/collections/default_collection/engines/{engine_id}/servingConfigs/default_config"
+
+    # Optional - only supported for unstructured data: Configuration options for search.
+    # Refer to the `ContentSearchSpec` reference for all supported fields:
+    # https://cloud.google.com/python/docs/reference/discoveryengine/latest/google.cloud.discoveryengine_v1.types.SearchRequest.ContentSearchSpec
+    content_search_spec = discoveryengine.SearchRequest.ContentSearchSpec(
+        # For information about snippets, refer to:
+        # https://cloud.google.com/generative-ai-app-builder/docs/snippets
+        #snippet_spec=discoveryengine.SearchRequest.ContentSearchSpec.SnippetSpec(
+        #    return_snippet=True
+        #),
+        # For information about search summaries, refer to:
+        # https://cloud.google.com/generative-ai-app-builder/docs/get-search-summaries
+        #summary_spec=discoveryengine.SearchRequest.ContentSearchSpec.SummarySpec(
+        #    summary_result_count=5,
+        #    include_citations=True,
+        #    ignore_adversarial_query=True,
+        #    ignore_non_summary_seeking_query=True,
+        #    model_prompt_spec=discoveryengine.SearchRequest.ContentSearchSpec.SummarySpec.ModelPromptSpec(
+        #        preamble="Send me the best result"
+        #    ),
+        #    model_spec=discoveryengine.SearchRequest.ContentSearchSpec.SummarySpec.ModelSpec(
+        #        version="stable",
+        #    ),
+        #),
+    )
+
+    # Refer to the `SearchRequest` reference for all supported fields:
+    # https://cloud.google.com/python/docs/reference/discoveryengine/latest/google.cloud.discoveryengine_v1.types.SearchRequest
+    request = discoveryengine.SearchRequest(
+        serving_config=serving_config,
+        query=search_query,
+        page_size=2,
+        content_search_spec=content_search_spec,
+        query_expansion_spec=discoveryengine.SearchRequest.QueryExpansionSpec(
+            condition=discoveryengine.SearchRequest.QueryExpansionSpec.Condition.AUTO,
+        ),
+        spell_correction_spec=discoveryengine.SearchRequest.SpellCorrectionSpec(
+            mode=discoveryengine.SearchRequest.SpellCorrectionSpec.Mode.AUTO
+        ),
+        # Optional: Use fine-tuned model for this request
+        # custom_fine_tuning_spec=discoveryengine.CustomFineTuningSpec(
+        #     enable_search_adaptor=True
+        # ),
+    )
+    print("STARTING")
+    page_result = client.search(request)
+
+    # Handle the response
+    i = 0
+    documents = []
+    for response in page_result:
+        from google.protobuf.json_format import MessageToDict
+        response_json = MessageToDict(response._pb)
+        print(response_json['document']['derivedStructData']['link'])
+        part = Part.from_uri(uri=response_json['document']['derivedStructData']['link'],
+    mime_type="text/html",
+)
+        documents.append(part)
+        i = i + 1
+        if i >= 3:
+            break
+    return documents
+
+
+model = GenerativeModel("gemini-2.0-flash-exp",generation_config=generation_config,system_instruction=["You are an underwriting specialist that has intricate knowledge of all things insurance. You do not decide the rating but only read information from the tables provided. Your goal is to give a rating to the request and explain your rationale in a brief manner.  This rating is calculated by adding up the ratings of the different risk factors. YOU MUST ALWAYS use the information from the documentation and explain the specific section you took the information from. Check your numbers twice, especially when it comes to ranges. NEVER assume numbers and ask clarifying questions if needed to get the full detail. Also note that 'TO X' includes the number written. Assume the client is standard if nothing says otherwise. Never use your own inforamtion to determine a rating, only do it based on the information provided n the documents. NEVER answer with a table"])
 chat = model.start_chat()
 @me.stateclass
 class State:
@@ -66,17 +158,17 @@ def chat_box():
 
 def transform(prompt:str, history:list):
   length = 0
-  responses = bot.call_graph(prompt)
-  #responses = chat.send_message(prompt)
+  #responses = bot.call_graph(prompt)
+  search = search_sample(project_id,location,engine_id,prompt)
+  search.append(prompt)
+  responses = chat.send_message(search,stream=True)
   for r in responses:
-    print("New MESSAGE!")
-    
-    if len(r[1][0].content) != length:
-      print(r)
-      for word in r[1][0].content.split():
-        yield word + " "
-        time.sleep(0.05)
-    length = len(r[1][0].content)
+    #words = r[1][0].content.split()
+    if r.text:
+      words = r.text
+      for word in words:
+        yield word
+        time.sleep(0.01)
 
 def header_text():
   with me.box(
